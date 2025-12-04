@@ -1,0 +1,53 @@
+name: Docker Build & Test
+
+on:
+  push:
+    branches: [ main, develop, master ]
+  pull_request:
+    branches: [ main, develop, master ]
+
+jobs:
+  docker-build-test:
+    name: Build and Test Docker Image
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      run: |
+        docker build -f docker/Dockerfile -t expense-tracker:ci .
+    
+    - name: Run Docker container
+      run: |
+        docker run -d -p 8080:80 --name expense-tracker-test expense-tracker:ci
+        sleep 5
+    
+    - name: Test health endpoint
+      run: |
+        curl -f http://localhost:8080/health || exit 1
+        echo "✅ Health check passed"
+    
+    - name: Test main application
+      run: |
+        curl -f http://localhost:8080 || exit 1
+        echo "✅ Application accessible"
+    
+    - name: Check Docker image size
+      run: |
+        SIZE=$(docker image inspect expense-tracker:ci --format='{{.Size}}')
+        SIZE_MB=$((SIZE / 1024 / 1024))
+        echo "📦 Image size: ${SIZE_MB}MB"
+        if [ $SIZE_MB -gt 100 ]; then
+          echo "⚠️ Warning: Image size is large (${SIZE_MB}MB)"
+        fi
+    
+    - name: Cleanup
+      if: always()
+      run: |
+        docker stop expense-tracker-test || true
+        docker rm expense-tracker-test || true
