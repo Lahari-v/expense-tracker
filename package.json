@@ -1,6 +1,5 @@
 {
   "name": "expense-tracker",
-  "homepage": "https://Lahari-v.github.io/expense-tracker",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
